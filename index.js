@@ -1,15 +1,62 @@
 import { launchCamera } from 'react-native-image-picker';
 import ImagePicker from 'react-native-image-crop-picker';
 import TextRecognition from '@react-native-ml-kit/text-recognition';
-// import { PERMISSIONS, request } from 'react-native-permissions';
+import { PERMISSIONS, request, RESULTS } from 'react-native-permissions';
+import { Platform } from 'react-native';
 
-async function captureCropAndRecognizeText() {
+/**
+ * @typedef {Object} CaptureOptions
+ * @property {import('react-native-image-picker').CameraOptions} [cameraOptions]
+ * @property {import('react-native-image-crop-picker').Options} [cropOptions]
+ */
+
+/**
+ * @typedef {Object} PermissionResult
+ * @property {boolean} granted
+ * @property {string} [error]
+ */
+
+/**
+ * Request camera permission
+ * @returns {Promise<PermissionResult>}
+ */
+async function requestCameraPermission() {
+  const permission = Platform.OS === 'ios' ? PERMISSIONS.IOS.CAMERA : PERMISSIONS.ANDROID.CAMERA;
+
+  const result = await request(permission);
+
+  switch (result) {
+    case RESULTS.UNAVAILABLE:
+      return { granted: false, error: 'Camera is not available on this device.' };
+    case RESULTS.DENIED:
+      return { granted: false, error: 'Camera permission denied. Please enable it in settings.' };
+    case RESULTS.LIMITED:
+      return { granted: true, error: 'Camera permission is limited. Some features may not be available.' };
+    case RESULTS.GRANTED:
+      return { granted: true };
+    case RESULTS.BLOCKED:
+      return { granted: false, error: 'Camera permission is blocked. Please enable it in settings.' };
+    default:
+      return { granted: false, error: 'Unknown permission result.' };
+  }
+}
+
+/**
+ * Capture an image, crop it, and recognize text
+ * @param {CaptureOptions} [options={}]
+ * @returns {Promise<import('@react-native-ml-kit/text-recognition').TextRecognitionResult | null>}
+ */
+async function captureCropAndRecognizeText(options = {}) {
   try {
-    // await requestCameraPermission();
-    const result = await launchCamera({ mediaType: 'photo' });
+    const permissionResult = await requestCameraPermission();
+    if (!permissionResult.granted) {
+      throw new Error(permissionResult.error || 'Camera permission not granted');
+    }
 
-    if (result.assets && result.assets.length > 0) {
-      const imageUri = result.assets[0].uri;
+    const cameraResult = await launchCamera(options.cameraOptions || { mediaType: 'photo' });
+
+    if (cameraResult.assets && cameraResult.assets.length > 0) {
+      const imageUri = cameraResult.assets[0].uri;
 
       // Crop the image using react-native-image-crop-picker
       const croppedImage = await ImagePicker.openCropper({
@@ -17,6 +64,7 @@ async function captureCropAndRecognizeText() {
         freeStyleCropEnabled: true,
         showCropFrame: true,
         cropping: true,
+        ...options.cropOptions,
       });
 
       // Recognize text from the cropped image
@@ -31,33 +79,13 @@ async function captureCropAndRecognizeText() {
       throw new Error('No image captured');
     }
   } catch (error) {
-    console.error('Error capturing, cropping, or recognizing text from image:', error);
-    throw error;
+    if (error instanceof Error) {
+      console.error('Error capturing, cropping, or recognizing text from image:', error.message);
+    } else {
+      console.error('An unknown error occurred');
+    }
+    return null;
   }
 }
-
-const requestCameraPermission = async () => {
-  const permission =
-    Platform.OS === 'ios' ? PERMISSIONS.IOS.CAMERA : PERMISSIONS.ANDROID.CAMERA;
-
-  const result = await request(permission);
-
-  switch (result) {
-    case "unavailable":
-      setErrorText('Camera is not available on this device.');
-      break;
-    case "denied":
-      setErrorText('Camera permission denied. Please enable it in settings.');
-      break;
-    case "limited":
-      setErrorText('Camera permission is limited. Some features may not be available.');
-      break;
-    case "granted":
-      break;
-    case "blocked":
-      setErrorText('Camera permission is blocked. Please enable it in settings.');
-      break;
-    }
-  }
 
 export default captureCropAndRecognizeText;
