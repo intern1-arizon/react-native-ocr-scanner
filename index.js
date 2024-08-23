@@ -1,11 +1,11 @@
 import { launchCamera } from 'react-native-image-picker';
 import ImagePicker from 'react-native-image-crop-picker';
 import TextRecognition from '@react-native-ml-kit/text-recognition';
-import { PERMISSIONS, request } from 'react-native-permissions';
+// import { PERMISSIONS, request } from 'react-native-permissions';
 
 async function captureCropAndRecognizeText() {
   try {
-    await requestCameraPermission();
+    // await requestCameraPermission();
     const result = await launchCamera({ mediaType: 'photo' });
 
     if (result.assets && result.assets.length > 0) {
