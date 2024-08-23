@@ -19,6 +19,7 @@ This package has the following peer dependencies that you'll need to install as 
 - `react-native-image-picker`
 - `react-native-image-crop-picker`
 - `@react-native-ml-kit/text-recognition`
+- `react-native-permissions`
 
 ## Usage
 
